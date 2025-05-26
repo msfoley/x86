@@ -35,16 +35,14 @@ start:
     call copy_boot_loader
     ; Enter 32-bit protected
     call enter_32
-    ; Loop here for debugging purposes
-.dead_loop:
-    jmp $
+reset:
     ; Do a reset if we ever get here
     jmp 0xFFFF:0x0000
 
 enter_32:
     ; Make sure we zero out segments that we used.
     xor ax, ax
-    mov ds, ax
+    mov es, ax
 
     lgdt [gdtr]
     mov eax, cr0
@@ -59,9 +57,6 @@ bits 16
 
 ; Get disk layout information from BIOS
 get_disk_info:
-    xor ax, ax
-    mov ds, ax
-
     xor dx, dx
     mov dl, byte [ds:drive_num] ; Drive number in dl
     test dl, 0x80
@@ -73,7 +68,7 @@ get_disk_info:
 
     mov ah, 0x08
     int 0x13
-    jc $ ; Loop here for debug
+    jc reset ; Loop here for debug
 .hard_drive:
     ; Extract info for a hard drive
     and cx, 0x3F
@@ -90,9 +85,6 @@ get_disk_info:
 
 ; Copy the stage2 bootloader from disk to RAM
 copy_boot_loader:
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
     push si
 
     ; Load start sector in si
@@ -114,7 +106,7 @@ copy_boot_loader:
     sub ax, dx
     mov bx, sector_size
     mul bx
-    mov di, ax
+    push ax
 
     ; Handle any overflow in dx
     xor ax, ax
@@ -122,27 +114,27 @@ copy_boot_loader:
     div bx
     cmp ax, 0x6000
     jg .exit ; We need to stop if we're going to overflow stage2
-    ; ds = _stage2 segment + ax
+    ; es = _stage2 segment + ax
     add ax, stage2 / 16
-    mov ds, ax
+    mov es, ax
 
+    pop bx
     call .lba
     add si, 1
     jmp .loop
 .exit:
     pop si
     ret
-; Convert the LBA to CHS and read the sector to ds:di
+; Convert the LBA to CHS and read the sector to es:bx
 .lba:
     push cx
     push dx
-    xor ax, ax
-    mov es, ax
+    push bx
 
     ; C = LBA / (HPC * SPT)
     ; bx = HPC * SPT
-    mov ax, [es:heads_per_cylinder]
-    mov bx, [es:sectors_per_track]
+    mov ax, [ds:heads_per_cylinder]
+    mov bx, [ds:sectors_per_track]
     mul bx
     mov bx, ax
     ; LBA / bx
@@ -155,7 +147,7 @@ copy_boot_loader:
     ; dx = LBA mod SPT
     xor dx, dx
     mov ax, si
-    mov bx, [es:sectors_per_track]
+    mov bx, [ds:sectors_per_track]
     div bx
     ; S = dx + 1
     add dx, 1
@@ -165,25 +157,24 @@ copy_boot_loader:
     ; H = (LBA / SPT) mod HPC
     xor dx, dx
     mov ax, si
-    mov bx, [es:sectors_per_track]
+    mov bx, [ds:sectors_per_track]
     div bx
-    mov bx, [es:heads_per_cylinder]
+    mov bx, [ds:heads_per_cylinder]
     div bx
     mov bx, dx
     ; dh = H
     shl dx, 8
 
-    mov dl, [es:drive_num] ; drive number
-    
-    mov ax, ds
-    mov es, ax ; buffer segment
-    mov bx, di ; buffer index
+    mov dl, [ds:drive_num] ; drive number
+
+    ; es is correct already
+    pop bx ; buffer index
 
     mov ah, 0x02 ; arg=read for int 0x13
     mov al, 0x01 ; Read one sector
 
     int 0x13
-    jc $ ; Loop here for debug
+    jc reset
 .lba_exit:
     pop dx
     pop cx
@@ -191,12 +182,10 @@ copy_boot_loader:
 
 ; Warning: destructive
 check_a20:
-    xor ax, ax
     ; 0000:0500 -> 0x00000500
-    mov ds, ax
     mov si, 0x0500
     ; FFFF:0510 -> 0x00100500
-    not ax
+    mov ax, 0xFFFF
     mov es, ax
     mov di, 0x0510
     ; Get current value of 0x00100500
