@@ -1,0 +1,5 @@
+boot/boot_loader
+boot/boot_sector
+
+*.elf
+*.o
