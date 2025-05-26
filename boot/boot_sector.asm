@@ -29,8 +29,6 @@ start:
     mov sp, 0x7B00
     ; Set the A20 address line
     call set_a20
-    ; Get disk geometry info
-    call get_disk_info
     ; Copy the boot loader
     call copy_boot_loader
     ; Enter 32-bit protected
@@ -55,58 +53,31 @@ tramp_32:
     jmp 0x08:stage2
 bits 16
 
-; Get disk layout information from BIOS
-get_disk_info:
-    xor dx, dx
-    mov dl, byte [ds:drive_num] ; Drive number in dl
-    test dl, 0x80
-    jz .defaults
-
-    ; For compatiblity 0 out es:di
-    mov es, ax
-    xor di, di
-
-    mov ah, 0x08
-    int 0x13
-    jc reset ; Loop here for debug
-.hard_drive:
-    ; Extract info for a hard drive
-    and cx, 0x3F
-    mov word [ds:sectors_per_track], cx
-    shr dx, 8
-    add dx, 1
-    mov word [ds:heads_per_cylinder], dx
-    jmp .exit
-.defaults:
-    mov word [ds:sectors_per_track], 63
-    mov word [ds:heads_per_cylinder], 16
-.exit:
-    ret
-
 ; Copy the stage2 bootloader from disk to RAM
 copy_boot_loader:
-    push si
-
-    ; Load start sector in si
-    mov di, stage2_sector
-    mov si, word [ds:di]
-    mov dx, si
+    ; Load start sector in dx
+    mov si, word [ds:stage2_sector]
 
     ; Load end sector in cx
-    mov di, stage2_length
-    mov cx, word [ds:di]
+    mov cx, word [ds:stage2_length]
     add cx, si
 
+    mov byte [ds:disk_access], 0x10
+    mov byte [ds:disk_access + 1], 0x00
+    mov word [ds:disk_access + 2], 1
+    mov word [ds:disk_access + 10], 0
+    mov word [ds:disk_access + 12], 0
+    mov word [ds:disk_access + 14], 0
 .loop:
     cmp si, cx
     je .exit
 
     ; Get destination of sector
     mov ax, si
-    sub ax, dx
+    sub ax, [ds:stage2_sector]
     mov bx, sector_size
     mul bx
-    push ax
+    mov di, ax
 
     ; Handle any overflow in dx
     xor ax, ax
@@ -114,70 +85,22 @@ copy_boot_loader:
     div bx
     cmp ax, 0x6000
     jg .exit ; We need to stop if we're going to overflow stage2
-    ; es = _stage2 segment + ax
     add ax, stage2 / 16
-    mov es, ax
 
-    pop bx
-    call .lba
+    mov bx, disk_access
+    mov word [ds:disk_access + 4], di
+    mov word [ds:disk_access + 6], ax
+    mov word [ds:disk_access + 8], si
+    mov dl, byte [ds:drive_num]
+    push si
+    mov si, disk_access
+    mov ah, 0x42
+    int 0x13
+    pop si
+
     add si, 1
     jmp .loop
 .exit:
-    pop si
-    ret
-; Convert the LBA to CHS and read the sector to es:bx
-.lba:
-    push cx
-    push dx
-    push bx
-
-    ; C = LBA / (HPC * SPT)
-    ; bx = HPC * SPT
-    mov ax, [ds:heads_per_cylinder]
-    mov bx, [ds:sectors_per_track]
-    mul bx
-    mov bx, ax
-    ; LBA / bx
-    mov ax, si
-    div bx
-    ; ch = C
-    mov ch, al
-
-    ; S = (LBA mod SPT) + 1
-    ; dx = LBA mod SPT
-    xor dx, dx
-    mov ax, si
-    mov bx, [ds:sectors_per_track]
-    div bx
-    ; S = dx + 1
-    add dx, 1
-    ; cl = S
-    mov cl, dl
-
-    ; H = (LBA / SPT) mod HPC
-    xor dx, dx
-    mov ax, si
-    mov bx, [ds:sectors_per_track]
-    div bx
-    mov bx, [ds:heads_per_cylinder]
-    div bx
-    mov bx, dx
-    ; dh = H
-    shl dx, 8
-
-    mov dl, [ds:drive_num] ; drive number
-
-    ; es is correct already
-    pop bx ; buffer index
-
-    mov ah, 0x02 ; arg=read for int 0x13
-    mov al, 0x01 ; Read one sector
-
-    int 0x13
-    jc reset
-.lba_exit:
-    pop dx
-    pop cx
     ret
 
 ; Warning: destructive
@@ -275,4 +198,4 @@ section .bss
 drive_num: resb 1
 heads_per_cylinder: resb 2
 sectors_per_track: resb 2
-buf: resb 512
+disk_access: resb 32
