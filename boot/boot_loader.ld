@@ -20,6 +20,10 @@ SECTIONS {
         . = ALIGN(512);
     } > STAGE2
 
+    .stage_one (NOLOAD) :
+    {
+        *(.stage_one*)
+    } > STAGE1
     .bss :
     {
         *(.bss*)

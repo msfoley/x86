@@ -37,11 +37,12 @@ clean:
 	$(RM) $(DISK_IMAGE)
 
 disk: $(BOOT_SECTOR) $(BOOT_LOADER)
-	dd if=/dev/zero of=$(DISK_IMAGE) bs=1M count=$(DISK_IMAGE_SIZE_MB) status=none
+	[ ! -f $(DISK_IMAGE) ] && dd if=/dev/zero of=$(DISK_IMAGE) bs=1M count=$(DISK_IMAGE_SIZE_MB) || true
 	dd if=$< of=$(DISK_IMAGE) bs=512 count=1 conv=notrunc status=none
 	dd if=$(word 2,$^) of=$(DISK_IMAGE) bs=512 seek=$(BOOT_LOADER_OFFSET) conv=notrunc status=none
 	perl -e "print pack('S', $(BOOT_LOADER_OFFSET))" | dd of=$(DISK_IMAGE) bs=1 seek=6 conv=notrunc status=none
 	perl -e "print pack('S',  $$(s=$$(stat -c %s boot/boot_loader) ; echo $$(((s / 0x200) + ((s % 0x200) > 0)))))" | dd of=$(DISK_IMAGE) bs=1 seek=8 conv=notrunc status=none
+	parted disk.img -- mkpart p ext4 1MiB -1s set 1 boot on
 
 run:
 ifeq ($(strip $(NO_STOP)),)
