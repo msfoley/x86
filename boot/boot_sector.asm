@@ -196,6 +196,4 @@ signature: db 0x55, 0xAA
 section .bss
 
 drive_num: resb 1
-heads_per_cylinder: resb 2
-sectors_per_track: resb 2
-disk_access: resb 32
+disk_access: resb 16

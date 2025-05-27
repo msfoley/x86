@@ -44,7 +44,11 @@ disk: $(BOOT_SECTOR) $(BOOT_LOADER)
 	perl -e "print pack('S',  $$(s=$$(stat -c %s boot/boot_loader) ; echo $$(((s / 0x200) + ((s % 0x200) > 0)))))" | dd of=$(DISK_IMAGE) bs=1 seek=8 conv=notrunc status=none
 
 run:
+ifeq ($(strip $(NO_STOP)),)
 	qemu-system-x86_64 -drive media=disk,format=raw,file=$(DISK_IMAGE) -S -gdb tcp::1234
+else
+	qemu-system-x86_64 -drive media=disk,format=raw,file=$(DISK_IMAGE) -gdb tcp::1234
+endif
 
 $(BOOT_SECTOR_ELF): $(BOOT_SECTOR_OBJ)
 	ld -T $(BOOT_SECTOR_LINKER) $< -o $@
