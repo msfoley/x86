@@ -1,6 +1,5 @@
-boot/boot_loader
-boot/boot_sector
 disk.img
 
+*.bin
 *.elf
 *.o

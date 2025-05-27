@@ -9,8 +9,6 @@ section .text
 _start:
     jmp 0:start
 
-; pad to word boundary
-db 0x5A
 stage2_sector: dw 0x0000
 stage2_length: dw 0x0000
 
