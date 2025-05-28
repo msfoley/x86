@@ -1,5 +1,7 @@
 disk.img
 
+*.map
+*.d
 *.bin
 *.elf
 *.o

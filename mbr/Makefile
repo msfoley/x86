@@ -19,6 +19,8 @@ STAGE2_ELF := $(STAGE2_NAME).elf
 STAGE2_BIN := $(STAGE2_NAME).bin
 STAGE2_SECTOR_OFFSET=1
 
+DEPS := $(patsubst %.asm,%.d,$(STAGE1_SRCS) $(STAGE2_SRCS))
+
 .PHONY: all clean
 
 all: $(MBR_IMAGE)
@@ -26,7 +28,8 @@ all: $(MBR_IMAGE)
 clean:
 	$(RM) $(STAGE1_ELF) $(STAGE2_ELF)
 	$(RM) $(STAGE1_BIN) $(STAGE2_BIN)
-	$(RM) $(STAGE1_OBJS)
+	$(RM) $(STAGE1_OBJS) $(STAGE2_OBJS)
+	$(RM) $(DEPS)
 	$(RM) $(MBR_IMAGE)
 
 $(MBR_IMAGE): $(STAGE1_BIN) $(STAGE2_BIN)
@@ -40,10 +43,15 @@ $(STAGE2_ELF): $(STAGE2_LINKER) $(STAGE2_OBJS)
 $(STAGE2_BIN): $(STAGE2_ELF)
 
 %.o: %.asm
-	nasm $(AFLAGS) $< -o $@
+	nasm $(AFLAGS) -MD $*.d $< -o $@
 
 %.elf:
-	ld -T $(filter %.ld,$^) $(LDFLAGS) $(filter %.o,$^) -o $@
+	$(LD) -T $(filter %.ld,$^) $(LDFLAGS) $(filter %.o,$^) -o $@ -Map=$*.map
 
 %.bin: %.elf
 	objcopy -O binary $< $@
+
+print-%:
+	@echo "$* = $($*)"
+
+-include $(DEPS)
