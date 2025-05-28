@@ -7,9 +7,12 @@ MEMORY {
     KERNEL (rwx): ORIGIN = 0x00100000, LENGTH = 0x00E00000
 }
 
+ENTRY(_start)
+
 SECTIONS {
     .text :
     {
+        *(.entry*)
         *(.text*)
         . = ALIGN(512);
     } > STAGE2
@@ -24,9 +27,14 @@ SECTIONS {
     {
         *(.stage_one*)
     } > STAGE1
+
     .bss :
     {
+        . = ALIGN(4);
+        _bss_start = .;
         *(.bss*)
+        . = ALIGN(4);
+        _bss_end = .;
     } > STAGE1_DATA
 
     .bios_data (NOLOAD) :

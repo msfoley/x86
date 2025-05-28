@@ -30,6 +30,7 @@ start:
     ; Copy the boot loader
     call copy_boot_loader
     ; Enter 32-bit protected
+    mov dl, byte [ds:drive_num]
     call enter_32
 reset:
     ; Do a reset if we ever get here
