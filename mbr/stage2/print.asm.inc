@@ -16,7 +16,10 @@ extern print_line
 
 extern print_str ; void print_str(char *str, uint8_t color)
 extern itoa ; uint32_t itoa(char *str, uint32_t i)
+extern itoa64 ; uint32_t itoa(char *str, uint32_t lower, uint32_t upper)
 extern clear_screen ; void clear_screen()
+extern print_newline ; void print_newline()
+extern print_space ; void print_space()
 %endif
 
 %endif

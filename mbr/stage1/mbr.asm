@@ -7,12 +7,12 @@ extern _stack_top
 section .text
 
 _start:
-    jmp 0:start
+    jmp 0:stage1
 
 stage2_sector: dw 0x0000
 stage2_length: dw 0x0000
 
-start:
+stage1:
     cli
     ; Zero out segment registers
     xor ax, ax
@@ -29,7 +29,14 @@ start:
     call set_a20
     ; Copy the boot loader
     call copy_boot_loader
+    ; Find the active partition and pass it in si
+    call find_boot_partition
+    push si
+    ; Get the memory map and pass it in di
+    call get_memory_map
+    mov di, memory_map
     ; Enter 32-bit protected
+    pop si
     mov dl, byte [ds:drive_num]
     call enter_32
 reset:
@@ -156,6 +163,61 @@ set_a20:
 .exit:
     ret
 
+find_boot_partition:
+    xor ax, ax
+    mov si, partition1
+.loop:
+    mov al, byte [ds:si]
+    test al, 0x80
+    jnz .part_found
+    add si, 16
+    cmp si, partition4
+    jle .loop
+    xor si, si
+    ret ; no drive found, return 0 in si
+.part_found:
+    ret ; Return address of partition in si 
+
+get_memory_map:
+    xor ebx, ebx ; Start from the beginning
+    xor bp, bp ; use bp as an entry counter
+
+    ; Get the address of the map and put it in es
+    mov ax, memory_map.map
+    shr ax, 4
+    mov es, ax
+    mov ax, memory_map.map
+    and ax, 0x000F
+    mov di, ax
+.loop:
+    mov ecx, 24
+    mov edx, "PAMS"
+    mov eax, 0xE820
+    int 0x15
+    jc .done
+    cmp ebx, 0
+    jz .done
+    cmp ecx, 24
+    jge .24_bytes
+    mov dword [es:di + 20], 0x01
+.24_bytes:
+    test byte [es:di + 20], 0x01
+    jz .skip ; Skip invalid entries
+    mov eax, [es:di + 8]
+    or eax, [es:di + 12] ; Collect all bits to make sure length != 0
+    jz .skip ; Skip 0 length entries
+    ; Valid, bump count and destination
+    add bp, 1
+    add di, 24
+.skip:
+    jmp .loop
+.done:
+    xor eax, eax
+    mov es, ax
+    mov ax, bp
+    mov dword [es:memory_map.length], eax
+    ret
+
 gdtr:
     dw (8 * 3)
     dd gdt
@@ -196,3 +258,9 @@ section .bss
 
 drive_num: resb 1
 disk_access: resb 16
+
+alignb 16
+memory_map:
+    .length: resb 4
+    .reserved: resb 12
+    .map: resb 24 * 20

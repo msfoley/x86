@@ -150,6 +150,97 @@ clear_screen:
     jne .loop
     ret
 
+global itoa64
+itoa64: ; uint32_t itoa64(char *str, uint32_t lower, uint32_t upper)
+    push ebp
+    mov ebp, esp
+
+    mov edx, dword [ebp + 16]
+    ; Just call itoa if upper dword is zero
+    cmp edx, 0
+    jnz .upper
+    pop ebp
+    jmp itoa
+
+.upper:
+    push edi
+
+    mov eax, dword [ebp + 8]
+
+    ; calculate hex size
+    mov eax, 8 + 2
+    test edx, 0xF0000000
+    jnz .sz
+    sub eax, 1
+    test edx, 0x0F000000
+    jnz .sz
+    sub eax, 1
+    test edx, 0x00F00000
+    jnz .sz
+    sub eax, 1
+    test edx, 0x000F0000
+    jnz .sz
+    sub eax, 1
+    test edx, 0x0000F000
+    jnz .sz
+    sub eax, 1
+    test edx, 0x00000F00
+    jnz .sz
+    sub eax, 1
+    test edx, 0x000000F0
+    jnz .sz
+    sub eax, 1
+.sz:
+    ; Print lower dword
+    mov ecx, [ebp + 12]
+    lea eax, [edi + eax]
+    push ecx
+    push eax
+    call itoa
+    add esp, 8
+    push eax
+    ; Print upper dword
+    push edx
+    push edi
+    call itoa
+    add esp, 8
+
+    ; sum return values
+    pop ecx
+    add eax, ecx
+    sub eax, 2
+
+    pop edi
+    pop ebp
+    ret
+
+global print_newline
+print_newline:
+    push ebp
+    mov ebp, esp
+
+    push color_norm
+    push strings.newline
+    call print_str
+    add esp, 8
+
+    pop ebp
+    ret
+
+global print_space
+print_space:
+    push ebp
+    mov ebp, esp
+
+    push color_norm
+    push .space
+    call print_str
+    add esp, 8
+
+    pop ebp
+    ret
+.space: db " ", 0
+
 section .data
 
 conv_hex: db "0123456789ABCDEF", 0

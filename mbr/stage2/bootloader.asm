@@ -4,24 +4,38 @@ bits 32
 %include "stage2/bootloader.asm.inc"
 %include "stage2/print.asm.inc"
 %include "stage2/strings.asm.inc"
-
-section .bss
-
-; disk stuff
+%include "stage2/disk.asm.inc"
 
 extern _bss_start
 extern _bss_end
+extern _stack_top
 
 section .entry
 
 global _start
 _start:
-    jmp start
+    jmp stage2
 
 section .text
 
-start:
+stage2:
     cli
+    mov esp, _stack_top
+    
+    ; Get the address of the memory map
+    and edi, 0xFFFF
+    push edi
+    ; Boot sector passes drive num in dl
+    and edx, 0xFF
+    push edx
+    ; Get the address of the active partition and save it for later
+    and esi, 0xFFFF
+    push esi
+
+.start_guard:
+    ; Safeguard against return oopsies
+    push .start_guard
+    ; Save these forever
     mov ebp, esp
 
     mov eax, _bss_start
@@ -30,9 +44,6 @@ start:
     add eax, 4
     cmp eax, _bss_end
     jl .bss_zero
-
-    ; Boot sector passes drive num in dl
-    mov byte [drive_num], dl
 
     ; Setup video vars
     mov byte [print_col], 0
@@ -45,7 +56,21 @@ start:
     call print_str
     add esp, 8
 
-    call find_boot_partition
+    mov eax, [ebp + 4]
+    push eax
+    push boot_partition
+    call copy_active_partition
+    add esp, 8
+
+    mov eax, [ebp + 12]
+    push eax
+    push memory_map
+    call copy_memory_map
+    add esp, 8
+
+    push memory_map
+    call print_memory_map
+    add esp, 4
 
 reset:
     hlt
@@ -53,36 +78,32 @@ reset:
     ; Do a reset if we ever get here
     jmp 0xFFFF:0x0000
 
-find_boot_partition:
+copy_active_partition:
     push ebp
     mov ebp, esp
     push esi
 
-    xor eax, eax
-    mov esi, mbr.partition1
-.loop:
-    mov al, byte [esi]
-    test al, 0x80
-    jnz .part_found
-    add esi, 16
-    cmp esi, mbr.partition4
-    jle .loop
+    mov edi, dword [ebp + 8]
+    mov esi, dword [ebp + 12]
+    cmp esi, 0
+    jnz .valid_part
+
     push color_err
     push strings.active_partition_error
     call print_str
     add esp, 8
     call reset
-.part_found:
+.valid_part:
     mov eax, dword [esi]
-    mov dword [boot_partition], eax
+    mov dword [edi], eax
     mov eax, dword [esi + 4]
-    mov dword [boot_partition + 4], eax
+    mov dword [edi + 4], eax
     mov eax, dword [esi + 8]
-    mov dword [boot_partition + 8], eax
+    mov dword [edi + 8], eax
     mov eax, dword [esi + 12]
-    mov dword [boot_partition + 12], eax
+    mov dword [edi + 12], eax
 
-    mov eax, dword [boot_partition + 8]
+    mov eax, dword [edi + 8]
     push eax
     push number_string
     call itoa
@@ -101,20 +122,120 @@ find_boot_partition:
 
     pop esi
     pop ebp
-    ret 
+    ret
 
-section .stage_one nobits
+copy_memory_map: ; void copy_memory_map(struct _memory_map *dst, struct _memory_map *src)
+    push ebp
+    mov ebp, esp
+    push edi
+    push esi
 
-resb (0x1B8 - ($ - $$))
-mbr:
-.unique_id: resb 4 
-.reserved: resb 2
-.partition1: resb 16
-.partition2: resb 16
-.partition3: resb 16
-.partition4: resb 16
-.signature: resb 2
+    mov edi, dword [ebp + 8]
+    mov esi, dword [ebp + 12]
+    xor ecx, ecx
+.copy:
+    cmp ecx, _memory_map_size
+    jg .done
+    mov eax, dword [esi + ecx]
+    mov dword [edi + ecx], eax
+    add ecx, 4
+    jmp .copy
+.done:
+    mov eax, dword [edi + _memory_map.length]
+    cmp eax, 20
+    jl .exit
+    mov eax, 20
+    mov dword [edi + _memory_map.length], eax
+.exit:
+    pop esi
+    pop edi
+    pop ebp
+    ret
+
+print_memory_map: ; void copy_memory_map(struct _memory_map *map)
+    push ebp
+    mov ebp, esp
+    push esi
+    push edi
+
+    mov esi, dword [ebp + 8]
+    mov ecx, dword [esi + _memory_map.length]
+    add esi, _memory_map.map
+
+.loop:
+    mov eax, dword [esi - _memory_map.map]
+    sub eax, ecx
+    mov edx, _memory_map_entry_size
+    mul edx
+    lea edi, dword [eax + esi]
+    push ecx
+
+    ; print 64-bit base addr
+    mov eax, dword [edi + _memory_map_entry.base_addr + 4]
+    push eax
+    mov eax, dword [edi + _memory_map_entry.base_addr]
+    push eax
+    push number_string
+    call itoa64
+    add esp, 12
+    push color_norm
+    push number_string
+    call print_str
+    add esp, 8
+    call print_space
+
+    ; print 64-bit length
+    mov eax, dword [edi + _memory_map_entry.length + 4]
+    push eax
+    mov eax, dword [edi + _memory_map_entry.length]
+    push eax
+    push number_string
+    call itoa64
+    add esp, 12
+    push color_norm
+    push number_string
+    call print_str
+    add esp, 8
+    call print_space
+
+    ; print type
+    mov eax, dword [edi + _memory_map_entry.type]
+    push eax
+    push number_string
+    call itoa
+    add esp, 8
+    push color_norm
+    push number_string
+    call print_str
+    add esp, 8
+    call print_space
+    
+    ; print ACPI Flags
+    mov eax, dword [edi + _memory_map_entry.acpi_flags]
+    push eax
+    push number_string
+    call itoa
+    add esp, 8
+    push color_norm
+    push number_string
+    call print_str
+    add esp, 8
+    call print_newline
+.check_done:
+    pop ecx
+    sub ecx, 1
+    cmp ecx, 0
+    je .exit
+    jmp .loop
+
+.exit:
+    pop edi
+    pop esi
+    pop ebp
+    ret
+.header: db `Memory map:\n`, 0
 
 section .bios_data nobits
 
+global bios_data
 bios_data: resb _bios_data.kb_last_state + 1 
