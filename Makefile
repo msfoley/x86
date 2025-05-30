@@ -6,7 +6,8 @@ MBR_IMAGE := $(MBR_DIR)/mbr.bin
 DISK_IMAGE := disk.img
 DISK_IMAGE_SIZE_MB := 16
 
-QEMU_ARGS := -drive media=disk,format=raw,file=$(DISK_IMAGE) -gdb tcp::1234
+QEMU_OPTS ?=
+QEMU_ARGS := -drive media=disk,format=raw,file=$(DISK_IMAGE) -gdb tcp::1234 $(QEMU_OPTS)
 ifeq ($(strip $(NO_STOP)),)
 QEMU_ARGS += -S
 endif

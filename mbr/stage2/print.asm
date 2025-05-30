@@ -106,33 +106,35 @@ print_str: ; print_str(char *str, uint8_t color)
 global itoa
 itoa:
     push ebp
-    push edi
     mov ebp, esp
+    push edi
 
-    mov edi, dword [ebp + 12]
-    mov eax, dword [ebp + 16]
+    mov edi, dword [ebp + 8]
 
+    mov byte [edi], '0'
+    mov byte [edi + 1], 'x'
+    add edi, 2
+    mov eax, 8
 .push_loop:
-    mov edx, eax
+    mov edx, dword [ebp + 12]
+    mov ecx, eax
+    sub ecx, 1
+    shl ecx, 2
+    shr edx, cl
+
     and edx, 0x0F
     mov dl, byte [edx + conv_hex]
-    push edx
-    shr eax, 4 
-    cmp eax, 0
-    jne .push_loop
-    push 'x'
-    push '0'
-.pop_loop:
-    pop eax
-    mov byte [edi], al
+
+    mov byte [edi], dl
     add edi, 1
-    cmp esp, ebp
-    jne .pop_loop
+
+    sub eax, 1
+    cmp eax, 0
+    jg .push_loop
 .exit:
     mov byte [edi], 0
     mov eax, edi
     sub eax, dword [ebp + 8]
-    sub eax, 1
 
     pop edi
     pop ebp
@@ -154,56 +156,31 @@ global itoa64
 itoa64: ; uint32_t itoa64(char *str, uint32_t lower, uint32_t upper)
     push ebp
     mov ebp, esp
-
-    mov edx, dword [ebp + 16]
-    ; Just call itoa if upper dword is zero
-    cmp edx, 0
-    jnz .upper
-    pop ebp
-    jmp itoa
-
-.upper:
     push edi
 
-    mov eax, dword [ebp + 8]
+    mov edi, dword [ebp + 8]
 
-    ; calculate hex size
-    mov eax, 8 + 2
-    test edx, 0xF0000000
-    jnz .sz
-    sub eax, 1
-    test edx, 0x0F000000
-    jnz .sz
-    sub eax, 1
-    test edx, 0x00F00000
-    jnz .sz
-    sub eax, 1
-    test edx, 0x000F0000
-    jnz .sz
-    sub eax, 1
-    test edx, 0x0000F000
-    jnz .sz
-    sub eax, 1
-    test edx, 0x00000F00
-    jnz .sz
-    sub eax, 1
-    test edx, 0x000000F0
-    jnz .sz
-    sub eax, 1
-.sz:
     ; Print lower dword
     mov ecx, [ebp + 12]
-    lea eax, [edi + eax]
+    lea eax, [edi + 8]
     push ecx
     push eax
     call itoa
     add esp, 8
     push eax
+    ; save byte that will be rewritten by the null terminator
+    xor eax, eax
+    mov al, byte [edi + 10]
+    push eax
     ; Print upper dword
-    push edx
+    mov ecx, [ebp + 16]
+    push ecx
     push edi
     call itoa
     add esp, 8
+    ; recover null terminated byte
+    pop eax
+    mov byte [edi + 10], al
 
     ; sum return values
     pop ecx

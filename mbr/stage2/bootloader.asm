@@ -158,6 +158,11 @@ print_memory_map: ; void copy_memory_map(struct _memory_map *map)
     push esi
     push edi
 
+    push color_norm
+    push .header
+    call print_str
+    add esp, 8
+
     mov esi, dword [ebp + 8]
     mov ecx, dword [esi + _memory_map.length]
     add esi, _memory_map.map

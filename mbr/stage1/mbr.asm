@@ -244,7 +244,7 @@ gdt:
     db 0xCF ; 3:0 Flags ; 19:16 Limit
     db 0x00 ; 31:24 Base
 
-times (0x1B8 - ($ - $$)) db 0x00
+section .mbr_footer
 
 unique_id: db 0x00, 0x00, 0x00, 0x00
 reserved: db 0x00, 0x00
@@ -260,6 +260,7 @@ drive_num: resb 1
 disk_access: resb 16
 
 alignb 16
+global memory_map ; hack for GDB
 memory_map:
     .length: resb 4
     .reserved: resb 12

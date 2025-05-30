@@ -1,6 +1,7 @@
 MBR_IMAGE := mbr.bin
 
 AFLAGS += -g -felf64 -F dwarf
+LDFLAGS += --print-memory-usage
 
 STAGE1_NAME := stage1
 STAGE1_DIR := $(STAGE1_NAME)
