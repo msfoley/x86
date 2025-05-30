@@ -44,7 +44,7 @@ $(STAGE2_ELF): $(STAGE2_LINKER) $(STAGE2_OBJS)
 $(STAGE2_BIN): $(STAGE2_ELF)
 
 %.o: %.asm
-	nasm $(AFLAGS) -MD $*.d $< -o $@
+	nasm $(AFLAGS) -MD $*.d $< -l $*.lst -o $@
 
 %.elf:
 	$(LD) -T $(filter %.ld,$^) $(LDFLAGS) $(filter %.o,$^) -o $@ -Map=$*.map

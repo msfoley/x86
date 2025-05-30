@@ -5,3 +5,4 @@ disk.img
 *.bin
 *.elf
 *.o
+*.lst
