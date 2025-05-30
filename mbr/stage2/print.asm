@@ -191,6 +191,52 @@ itoa64: ; uint32_t itoa64(char *str, uint32_t lower, uint32_t upper)
     pop ebp
     ret
 
+global itoa8
+itoa8: ; uint32_t itoa8(char *str, uint8_t x)
+    push ebp
+    mov ebp, esp
+    push edi
+
+    mov edi, dword [ebp + 8]
+    mov ecx, dword [ebp + 12]
+
+    push ecx
+    push edi
+    call itoa
+    add esp, 8
+
+    mov ax, word [edi + 8]
+    mov word [edi + 2], ax
+    mov byte [edi + 4], 0
+
+    mov eax, 4
+    pop edi
+    pop ebp
+    ret
+
+global itoa16
+itoa16: ; uint32_t itoa16(char *str, uint16_t x)
+    push ebp
+    mov ebp, esp
+    push edi
+
+    mov edi, dword [ebp + 8]
+    mov ecx, dword [ebp + 12]
+
+    push ecx
+    push edi
+    call itoa
+    add esp, 8
+
+    mov ax, word [edi + 6]
+    mov word [edi + 2], ax
+    mov byte [edi + 6], 0
+
+    mov eax, 6
+    pop edi
+    pop ebp
+    ret
+
 global print_newline
 print_newline:
     push ebp

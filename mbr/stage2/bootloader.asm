@@ -5,6 +5,7 @@ bits 32
 %include "stage2/print.asm.inc"
 %include "stage2/strings.asm.inc"
 %include "stage2/disk.asm.inc"
+%include "stage2/pci.asm.inc"
 
 extern _bss_start
 extern _bss_end
@@ -71,6 +72,9 @@ stage2:
     push memory_map
     call print_memory_map
     add esp, 4
+
+    call pci_init
+    call pci_print_device_list
 
 reset:
     hlt
