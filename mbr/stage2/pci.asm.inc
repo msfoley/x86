@@ -63,6 +63,8 @@ struc _pci_header_type_bridge
 endstruc
 
 %ifndef PCI_ASM_INC_NO_EXTERN
+extern pci_device_list
+
 extern pci_init ; void pci_init()
 extern pci_read_dword ; uint32_t pci_read_dword(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 extern pci_read_word ; uint16_t pci_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)

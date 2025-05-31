@@ -166,4 +166,8 @@ ahci_prdt_entry_i equ 0x80000000
 
 common boot_partition 16
 
+%ifndef DISK_ASM_INC_NO_EXTERN
+extern ahci_init
+%endif
+
 %endif

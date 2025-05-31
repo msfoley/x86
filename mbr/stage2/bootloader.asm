@@ -76,6 +76,10 @@ stage2:
     call pci_init
     call pci_print_device_list
 
+    call ahci_init
+    cmp eax, 0
+    call reset
+
 reset:
     hlt
     jmp $

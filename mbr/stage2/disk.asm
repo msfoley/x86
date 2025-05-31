@@ -1,11 +1,77 @@
 bits 32
 
-%include "stage2/bootloader.asm.inc"
+%define DISK_ASM_INC_NO_EXTERN
 %include "stage2/disk.asm.inc"
+%include "stage2/bootloader.asm.inc"
+%include "stage2/pci.asm.inc"
+%include "stage2/print.asm.inc"
+
+%define AHCI_CLASS 0x01
+%define AHCI_SUBCLASS 0x06
+%define AHCI_PROG_IF 0x01
+
+section .bss
+
+ahci_base: resb 4
+
+section .text
 
 global ahci_init
-ahci_init: ; int ahci_init(uint32_t base_ptr)
-    nop
+ahci_init: ; int ahci_init()
+    push ebp
+    mov ebp, esp
+    push edi
+
+    mov ecx, -1
+    xor ecx, ecx
+    mov edx, dword [pci_device_list + _pci_device_list.length]
+    lea edi, dword [pci_device_list + _pci_device_list.device_list]
+    jmp .loop_start
+
+.loop:
+    add ecx, 1
+    add edi, _pci_device_size
+.loop_start:
+    cmp ecx, edx
+    jge .fail
+
+    mov eax, dword [edi + _pci_device.revision_id]
+    shr eax, 8
+    cmp al, AHCI_PROG_IF
+    jne .loop
+    shr eax, 8
+    cmp al, AHCI_SUBCLASS
+    jne .loop
+    shr eax, 8
+    cmp al, AHCI_CLASS
+    jne .loop
+.found:
+    push color_norm
+    push .found_ahci
+    call print_str
+    add esp, 8
+
+    push _pci_header_type_0.bar5
+    push dword [edi + _pci_device.func]
+    push dword [edi + _pci_device.slot]
+    push dword [edi + _pci_device.bus]
+    call pci_read_dword
+    add esp, 16
+    mov dword [ahci_base], eax
+    jmp .exit
+    mov eax, 0
+.fail:
+    push color_norm
+    push .no_ahci
+    call print_str
+    add esp, 8
+    mov eax, 1
+.exit:
+    pop edi
+    pop ebp
+    ret
+.no_ahci: db `No AHCI devices found.\n`, 0
+.found_ahci: db `Found AHCI device.\n`, 0
 
 ahci_port_detect: ; int ahci_port_detect(struct ahci_mem *ptr)
     push ebp
