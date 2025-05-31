@@ -2,7 +2,6 @@ bits 32
 
 %define STRING_ASM_INC_NO_EXTERN
 %include "stage2/print.asm.inc"
-%include "stage2/strings.asm.inc"
 
 video_mem equ 0x000B8000
 columns equ 80
@@ -173,8 +172,7 @@ itoa64: ; uint32_t itoa64(char *str, uint32_t lower, uint32_t upper)
     mov al, byte [edi + 10]
     push eax
     ; Print upper dword
-    mov ecx, [ebp + 16]
-    push ecx
+    push dword [ebp + 16]
     push edi
     call itoa
     add esp, 8
@@ -199,10 +197,9 @@ itoa8: ; uint32_t itoa8(char *str, uint8_t x)
     push esi
 
     mov edi, dword [ebp + 8]
-    mov ecx, dword [ebp + 12]
-    mov esi, dword itoa8_16_buf
+    mov esi, itoa8_16_buf
 
-    push ecx
+    push dword [ebp + 12]
     push esi
     call itoa
     add esp, 8
@@ -225,10 +222,9 @@ itoa16: ; uint32_t itoa16(char *str, uint16_t x)
     push esi
 
     mov edi, dword [ebp + 8]
-    mov ecx, dword [ebp + 12]
     mov esi, dword itoa8_16_buf
 
-    push ecx
+    push dword [ebp + 12]
     push esi
     call itoa
     add esp, 8
@@ -248,13 +244,12 @@ print_newline:
     push ebp
     mov ebp, esp
 
-    push color_norm
-    push strings.newline
-    call print_str
-    add esp, 8
+    add byte [print_line], 1
+    mov byte [print_col], 0
 
     pop ebp
     ret
+.newline: db `\n`, 0
 
 global print_space
 print_space:

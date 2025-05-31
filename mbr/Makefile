@@ -20,6 +20,8 @@ STAGE2_ELF := $(STAGE2_NAME).elf
 STAGE2_BIN := $(STAGE2_NAME).bin
 STAGE2_SECTOR_OFFSET=1
 
+LISTINGS := $(patsubst %.asm,%.lst,$(STAGE1_SRCS) $(STAGE2_SRCS))
+
 DEPS := $(patsubst %.asm,%.d,$(STAGE1_SRCS) $(STAGE2_SRCS))
 
 .PHONY: all clean
@@ -32,6 +34,7 @@ clean:
 	$(RM) $(STAGE1_OBJS) $(STAGE2_OBJS)
 	$(RM) $(DEPS)
 	$(RM) $(MBR_IMAGE)
+	$(RM) $(LISTINGS)
 
 $(MBR_IMAGE): $(STAGE1_BIN) $(STAGE2_BIN)
 	cat $^ > $@

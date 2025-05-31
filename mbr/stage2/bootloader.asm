@@ -3,7 +3,6 @@ bits 32
 %define BOOTLOADER_ASM_INC_NO_EXTERN
 %include "stage2/bootloader.asm.inc"
 %include "stage2/print.asm.inc"
-%include "stage2/strings.asm.inc"
 %include "stage2/disk.asm.inc"
 %include "stage2/pci.asm.inc"
 
@@ -53,7 +52,7 @@ stage2:
     call clear_screen
     ; print message saying we're in stage 2
     push color_norm
-    push strings.ident
+    push .ident
     call print_str
     add esp, 8
 
@@ -79,6 +78,7 @@ stage2:
     call ahci_init
     cmp eax, 0
     call reset
+.ident: db `Stage2 Bootloader\n`, 0
 
 reset:
     hlt
@@ -97,7 +97,7 @@ copy_active_partition:
     jnz .valid_part
 
     push color_err
-    push strings.active_partition_error
+    push .active_partition_error
     call print_str
     add esp, 8
     call reset
@@ -118,19 +118,19 @@ copy_active_partition:
     add esp, 8
 
     push color_norm
-    push strings.active_partition
+    push .active_partition
     call print_str
     add esp, 4
     push number_string
     call print_str
-    add esp, 4
-    push strings.newline
-    call print_str
     add esp, 8
+    call print_newline
 
     pop esi
     pop ebp
     ret
+.active_partition: db `Active partition start sector: `, 0
+.active_partition_error: db `No active partition found\n`, 0
 
 copy_memory_map: ; void copy_memory_map(struct _memory_map *dst, struct _memory_map *src)
     push ebp
@@ -184,10 +184,8 @@ print_memory_map: ; void copy_memory_map(struct _memory_map *map)
     push ecx
 
     ; print 64-bit base addr
-    mov eax, dword [edi + _memory_map_entry.base_addr + 4]
-    push eax
-    mov eax, dword [edi + _memory_map_entry.base_addr]
-    push eax
+    push dword [edi + _memory_map_entry.base_addr + 4]
+    push dword [edi + _memory_map_entry.base_addr]
     push number_string
     call itoa64
     add esp, 12
@@ -198,10 +196,8 @@ print_memory_map: ; void copy_memory_map(struct _memory_map *map)
     call print_space
 
     ; print 64-bit length
-    mov eax, dword [edi + _memory_map_entry.length + 4]
-    push eax
-    mov eax, dword [edi + _memory_map_entry.length]
-    push eax
+    push dword [edi + _memory_map_entry.length + 4]
+    push dword [edi + _memory_map_entry.length]
     push number_string
     call itoa64
     add esp, 12
@@ -212,8 +208,7 @@ print_memory_map: ; void copy_memory_map(struct _memory_map *map)
     call print_space
 
     ; print type
-    mov eax, dword [edi + _memory_map_entry.type]
-    push eax
+    push dword [edi + _memory_map_entry.type]
     push number_string
     call itoa
     add esp, 8
@@ -224,8 +219,7 @@ print_memory_map: ; void copy_memory_map(struct _memory_map *map)
     call print_space
     
     ; print ACPI Flags
-    mov eax, dword [edi + _memory_map_entry.acpi_flags]
-    push eax
+    push dword [edi + _memory_map_entry.acpi_flags]
     push number_string
     call itoa
     add esp, 8
