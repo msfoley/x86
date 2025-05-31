@@ -269,6 +269,11 @@ pci_print_device_list: ; void pci_print_device_list()
     push ebx
     push esi
 
+    push color_norm
+    push .header_str
+    call print_str
+    add esp, 8
+
     xor ebx, ebx
 .loop:
     lea esi, dword [pci_device_list + _pci_device_list.device_list + ebx * _pci_device_size]
@@ -284,6 +289,7 @@ pci_print_device_list: ; void pci_print_device_list()
     pop ebx
     pop ebp
     ret
+.header_str: db `PCI Map:\n`, 0
 
 pci_print_device: ; void pci_print_device(struct _pci_device *device)
     push ebp
