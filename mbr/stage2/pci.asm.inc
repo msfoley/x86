@@ -6,8 +6,6 @@ PCI_MAX_SLOT equ 0x1F
 PCI_MAX_FUNC equ 0x07
 PCI_MAX_DEVICES equ (PCI_MAX_BUS + 1) * (PCI_MAX_SLOT + 1) * (PCI_MAX_FUNC + 1)
 
-PCI_AHCI_CODE equ 0x01060100
-
 struc _pci_device
     ; DWORD 0
     .func: resb 1

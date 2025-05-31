@@ -15,7 +15,6 @@ SECTIONS {
     {
         *(.entry*)
         *(.text*)
-        . = ALIGN(512);
     } > STAGE2
 
     .data :

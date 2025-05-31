@@ -39,23 +39,22 @@ pci_init: ; void pci_init()
 
     call bus_scan
 
-    mov dword [ebp - 4], _pci_header_type_0.header_type ; offset
+    mov dword [ebp - 8], _pci_header_type_0.header_type ; offset
     call pci_read_byte
     test al, 0x80
     jz .exit ; If this isn't a multi function device, we don't have to scan a bunch of other busses
 
-    mov dword [ebp - 4], _pci_header_type_0.vendor ; offset
+    mov dword [ebp - 8], _pci_header_type_0.vendor ; offset
     xor esi, esi
 .alt_bus_loop:
     add esi, 1
+    mov dword [ebp - 20], esi ; bus
 
     call pci_read_word
     cmp eax, 0xFFFF
     je .exit
 
-    mov dword [ebp - 16], esi ; bus
     call bus_scan
-    mov dword [ebp - 16], 0
 
     cmp esi, PCI_MAX_FUNC
     jl .alt_bus_loop
@@ -69,35 +68,31 @@ pci_init: ; void pci_init()
 bus_scan: ; void bus_scan(uint8_t bus)
     push ebp
     mov ebp, esp
+    push esi
 
-    mov eax, [ebp + 8]
-    push eax
-
-    mov ecx, 0
+    mov esi, 0
 .slot_loop:
-    push ecx
+    push esi ; slot
+    push dword [ebp + 8] ; bus
     call slot_scan
-    add esp, 4
+    add esp, 8
 
-    pop ecx
-    add ecx, 1
-    cmp ecx, PCI_MAX_SLOT
+    add esi, 1
+    cmp esi, PCI_MAX_SLOT
     jle .slot_loop
-    add esp, 4
 
+    pop esi
     pop ebp
     ret
 
-slot_scan: ; void slot_scan(uint8_t slot, uint8_t bus)
+slot_scan: ; void slot_scan(uint8_t bus, uint8_t slot)
     push ebp
     mov ebp, esp
 
     push _pci_header_type_0.vendor ; offset
     push 0 ; func
-    mov eax, dword [ebp + 8]
-    push eax ; slot
-    mov eax, dword [ebp + 12]
-    push eax ; bus
+    push dword [ebp + 12] ; slot
+    push dword [ebp + 8] ; bus
     call pci_read_word
 
     cmp eax, 0xFFFF
@@ -156,12 +151,9 @@ pci_add_device: ; void pci_add_device(uint8_t bus, uint8_t slot, uint8_t func)
 
     ; Get class and subclass
     push _pci_header_type_0.revision_id ; offset
-    mov eax, dword [ebp + 16] ; func
-    push eax
-    mov eax, dword [ebp + 12] ; slot
-    push eax
-    mov eax, dword [ebp + 8] ; bus
-    push eax
+    push dword [ebp + 16] ; func
+    push dword [ebp + 12] ; slot
+    push dword [ebp + 8] ; bus
     call pci_read_dword
 
     ; Store it
@@ -233,14 +225,10 @@ pci_read_word: ; uint32_t pci_read_word(uint8_t bus, uint8_t slot, uint8_t func,
     push ebp
     mov ebp, esp
 
-    mov eax, [ebp + 20] ; offset
-    push eax
-    mov eax, [ebp + 16] ; func
-    push eax
-    mov eax, [ebp + 12] ; slot
-    push eax
-    mov eax, [ebp + 8] ; bus
-    push eax
+    push dword [ebp + 20] ; offset
+    push dword [ebp + 16] ; func
+    push dword [ebp + 12] ; slot
+    push dword [ebp + 8] ; bus
     call pci_read_dword
     add esp, 16
 
@@ -248,7 +236,9 @@ pci_read_word: ; uint32_t pci_read_word(uint8_t bus, uint8_t slot, uint8_t func,
     and ecx, 0x02
     shl ecx, 3 ; Either (2 << 3 = 16) or (0 << 3 = 0)
     shr eax, cl ; eax = eax >> ((offset & 0x03) * 8)
+    and eax, 0xFFFF
 
+    pop ebp
     ret
 
 global pci_read_byte
@@ -256,14 +246,10 @@ pci_read_byte: ; uint32_t pci_read_byte(uint8_t bus, uint8_t slot, uint8_t func,
     push ebp
     mov ebp, esp
 
-    mov eax, [ebp + 20] ; offset
-    push eax
-    mov eax, [ebp + 16] ; func
-    push eax
-    mov eax, [ebp + 12] ; slot
-    push eax
-    mov eax, [ebp + 8] ; bus
-    push eax
+    push dword [ebp + 20] ; offset
+    push dword [ebp + 16] ; func
+    push dword [ebp + 12] ; slot
+    push dword [ebp + 8] ; bus
     call pci_read_dword
     add esp, 16
 
@@ -271,7 +257,9 @@ pci_read_byte: ; uint32_t pci_read_byte(uint8_t bus, uint8_t slot, uint8_t func,
     and ecx, 0x03
     shl ecx, 3
     shr eax, cl ; eax = eax >> ((offset & 0x03) * 8)
+    and eax, 0xFF
 
+    pop ebp
     ret
 
 global pci_print_device_list
@@ -310,7 +298,7 @@ pci_print_device: ; void pci_print_device(struct _pci_device *device)
     push temp_storage
     ; Format bus
     mov al, byte [esi + _pci_device.bus]
-    mov byte [ebp - 4], al
+    mov byte [ebp - 12], al
     call itoa8
     mov ax, word [temp_storage + 2]
     mov word [edi], ax
@@ -318,7 +306,7 @@ pci_print_device: ; void pci_print_device(struct _pci_device *device)
     add edi, 3
     ; Format slot
     mov al, byte [esi + _pci_device.slot]
-    mov byte [ebp - 4], al
+    mov byte [ebp - 12], al
     call itoa8
     mov ax, word [temp_storage + 2]
     mov word [edi], ax
@@ -326,7 +314,7 @@ pci_print_device: ; void pci_print_device(struct _pci_device *device)
     add edi, 3
     ; Format func
     mov al, byte [esi + _pci_device.func]
-    mov byte [ebp - 4], al
+    mov byte [ebp - 12], al
     call itoa8
     mov al, byte [temp_storage + 3]
     mov byte [edi], al
@@ -342,11 +330,10 @@ pci_print_device: ; void pci_print_device(struct _pci_device *device)
     add esp, 8
 
     ; Print big ol DWORD 1
-    mov eax, dword [esi + _pci_device.revision_id]
-    push eax
+    push dword [esi + _pci_device.revision_id]
     push number_string
     call itoa
-    mov dword [ebp - 4], color_norm
+    mov dword [ebp - 12], color_norm
     call print_str
     add esp, 8
     call print_space
@@ -368,16 +355,16 @@ pci_print_device: ; void pci_print_device(struct _pci_device *device)
     push temp_storage
     mov edi, number_string
     ; Format vendor
-    mov ax, word [ebp - 4]
-    mov word [ebp - 8], ax
+    mov ax, word [ebp - 12]
+    mov word [ebp - 16], ax
     call itoa16
     mov eax, dword [temp_storage + 2]
     mov dword [edi], eax
     mov byte [edi + 4], ":"
     add edi, 5
     ; Format device
-    mov ax, word [ebp - 6]
-    mov word [ebp - 8], ax
+    mov ax, word [ebp - 10]
+    mov word [ebp - 16], ax
     call itoa16
     mov eax, dword [temp_storage + 2]
     mov dword [edi], eax
@@ -389,7 +376,7 @@ pci_print_device: ; void pci_print_device(struct _pci_device *device)
     push color_norm
     push number_string
     call print_str
-    add esp, 12
+    add esp, 8
 
     pop esi
     pop edi

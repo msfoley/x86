@@ -7,7 +7,11 @@ DISK_IMAGE := disk.img
 DISK_IMAGE_SIZE_MB := 16
 
 QEMU_OPTS ?=
-QEMU_ARGS := -drive media=disk,format=raw,file=$(DISK_IMAGE) -gdb tcp::1234 $(QEMU_OPTS)
+QEMU_ARGS := -gdb tcp::1234
+QEMU_ARGS += -drive id=disk,media=disk,format=raw,file=$(DISK_IMAGE),if=none
+QEMU_ARGS += -device ahci,id=ahci
+QEMU_ARGS += -device ide-hd,drive=disk,bus=ahci.0
+QEMU_ARGS += $(QEMU_OPTS)
 ifeq ($(strip $(NO_STOP)),)
 QEMU_ARGS += -S
 endif

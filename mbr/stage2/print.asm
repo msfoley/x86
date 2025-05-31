@@ -196,20 +196,23 @@ itoa8: ; uint32_t itoa8(char *str, uint8_t x)
     push ebp
     mov ebp, esp
     push edi
+    push esi
 
     mov edi, dword [ebp + 8]
     mov ecx, dword [ebp + 12]
+    mov esi, dword itoa8_16_buf
 
     push ecx
-    push edi
+    push esi
     call itoa
     add esp, 8
 
-    mov ax, word [edi + 8]
+    mov ax, word [esi + 8]
     mov word [edi + 2], ax
     mov byte [edi + 4], 0
 
     mov eax, 4
+    pop esi
     pop edi
     pop ebp
     ret
@@ -219,20 +222,23 @@ itoa16: ; uint32_t itoa16(char *str, uint16_t x)
     push ebp
     mov ebp, esp
     push edi
+    push esi
 
     mov edi, dword [ebp + 8]
     mov ecx, dword [ebp + 12]
+    mov esi, dword itoa8_16_buf
 
     push ecx
-    push edi
+    push esi
     call itoa
     add esp, 8
 
-    mov ax, word [edi + 6]
-    mov word [edi + 2], ax
+    mov eax, dword [esi + 6]
+    mov dword [edi + 2], eax
     mov byte [edi + 6], 0
 
     mov eax, 6
+    pop esi
     pop edi
     pop ebp
     ret
@@ -263,6 +269,10 @@ print_space:
     pop ebp
     ret
 .space: db " ", 0
+
+section .bss
+
+itoa8_16_buf: resb 11
 
 section .data
 
