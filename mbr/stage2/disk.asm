@@ -125,3 +125,7 @@ ahci_detect_port: ; int ahci_detect_port(struct ahci_port *ptr)
 
     pop ebp
     ret  
+
+section .stage1_copy nobits
+global boot_partition
+boot_partition: resb 16

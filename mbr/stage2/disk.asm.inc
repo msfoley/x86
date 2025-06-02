@@ -164,9 +164,17 @@ endstruc
 ahci_prdt_entry_dbc equ 0x003FFFFF
 ahci_prdt_entry_i equ 0x80000000
 
-common boot_partition 16
+struc _boot_partition
+    .attrs: resb 1
+    .chs_start: resb 3
+    .type: resb 1
+    .chs_last: resb 3
+    .lba_start: resb 4
+    .sector_count: resb 4
+endstruc
 
 %ifndef DISK_ASM_INC_NO_EXTERN
+extern boot_partition
 extern ahci_init
 %endif
 

@@ -43,9 +43,9 @@ struc _memory_map
 endstruc
 
 %ifndef BOOTLOADER_ASM_INC_NO_EXTERN
+extern start32
+extern memory_map
 extern bios_data
 %endif
-
-common memory_map 16 + 24 * 20
 
 %endif

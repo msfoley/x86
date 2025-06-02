@@ -13,6 +13,9 @@ sector=$4
 
 size="$(stat -c %s $stage2_bin)"
 length="$((size / 512))"
+if [ "$((size % 512))" -ne 0 ]; then
+    length=$((length + 1))
+fi
 
 sector_offset="$(objdump -D $stage1_elf | grep stage2_sector | gawk -n '{printf "0x%04X\n", "0x" $1}')"
 length_offset="$(objdump -D $stage1_elf | grep stage2_length | gawk -n '{printf "0x%04X\n", "0x" $1}')"

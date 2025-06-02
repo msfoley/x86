@@ -2,7 +2,6 @@ bits 16
 
 sector_size equ 512
 stage2 equ 0x10000
-extern _stack_top
 
 section .text
 
@@ -20,11 +19,12 @@ stage1:
     mov es, ax
     mov fs, ax
     mov gs, ax
+    mov ax, 0x2000 
     mov ss, ax
     ; Save drive number
     mov byte [ds:drive_num], dl
     ; Setup stack
-    mov sp, 0x7B00
+    mov sp, 0
     ; Set the A20 address line
     call set_a20
     ; Copy the boot loader
@@ -38,26 +38,10 @@ stage1:
     ; Enter 32-bit protected
     pop si
     mov dl, byte [ds:drive_num]
-    call enter_32
+    jmp 0x1000:0x0000
 reset:
     ; Do a reset if we ever get here
     jmp 0xFFFF:0x0000
-
-enter_32:
-    ; Make sure we zero out segments that we used.
-    xor ax, ax
-    mov es, ax
-
-    lgdt [gdtr]
-    mov eax, cr0
-    or al, 0x01
-    mov cr0, eax
-    jmp 0x08:tramp_32
-
-bits 32
-tramp_32:
-    jmp 0x08:stage2
-bits 16
 
 ; Copy the stage2 bootloader from disk to RAM
 copy_boot_loader:
@@ -164,11 +148,9 @@ set_a20:
     ret
 
 find_boot_partition:
-    xor ax, ax
     mov si, partition1
 .loop:
-    mov al, byte [ds:si]
-    test al, 0x80
+    test byte [ds:si], 0x80
     jnz .part_found
     add si, 16
     cmp si, partition4
@@ -217,32 +199,6 @@ get_memory_map:
     mov ax, bp
     mov dword [es:memory_map.length], eax
     ret
-
-gdtr:
-    dw (8 * 3)
-    dd gdt
-gdt:
-    ; Null descriptor
-    dw 0x0000 ; 15:0 Limit
-    dw 0x0000 ; 15:0 Base
-    db 0x00 ; 23:16 Base
-    db 0x00 ; Access Byte
-    db 0x00 ; 3:0 Flags ; 19:16 Flags
-    db 0x00 ; 31:24 Base
-    ; Code descriptor
-    dw 0xFFFF ; 15:0 Limit
-    dw 0x0000 ; 15:0 Base
-    db 0x00 ; 23:16 Base
-    db 0x9A ; Access Byte
-    db 0xCF ; 3:0 Flags ; 19:16 Limit
-    db 0x00 ; 31:24 Base
-    ; Data descriptor
-    dw 0xFFFF ; 15:0 Limit
-    dw 0x0000 ; 15:0 Base
-    db 0x00 ; 23:16 Base
-    db 0x92 ; Access Byte
-    db 0xCF ; 3:0 Flags ; 19:16 Limit
-    db 0x00 ; 31:24 Base
 
 section .mbr_footer
 

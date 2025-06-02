@@ -7,43 +7,29 @@ bits 32
 %include "stage2/pci.asm.inc"
 
 extern _bss_start
-extern _bss_end
+extern _bss_length
 extern _stack_top
 
 section .entry
 
-global _start
-_start:
-    jmp stage2
+global start_32
+start_32:
+    xor eax, eax
+    mov edi, _bss_start
+    mov ecx, _bss_length
+    shr ecx, 2
+    repe stosd
+
+.far_jump:
+    jmp 0x08:stage2
 
 section .text
 
 stage2:
     cli
+
     mov esp, _stack_top
-    
-    ; Get the address of the memory map
-    and edi, 0xFFFF
-    push edi
-    ; Boot sector passes drive num in dl
-    and edx, 0xFF
-    push edx
-    ; Get the address of the active partition and save it for later
-    and esi, 0xFFFF
-    push esi
-
-.start_guard:
-    ; Safeguard against return oopsies
-    push .start_guard
-    ; Save these forever
-    mov ebp, esp
-
-    mov eax, _bss_start
-.bss_zero:
-    mov dword [eax], 0x00000000
-    add eax, 4
-    cmp eax, _bss_end
-    jl .bss_zero
+    mov ebp, esp    
 
     ; Setup video vars
     mov byte [print_col], 0
@@ -56,17 +42,7 @@ stage2:
     call print_str
     add esp, 8
 
-    mov eax, [ebp + 4]
-    push eax
-    push boot_partition
-    call copy_active_partition
-    add esp, 8
-
-    mov eax, [ebp + 12]
-    push eax
-    push memory_map
-    call copy_memory_map
-    add esp, 8
+    call print_active_partition
 
     push memory_map
     call print_memory_map
@@ -86,33 +62,21 @@ reset:
     ; Do a reset if we ever get here
     jmp 0xFFFF:0x0000
 
-copy_active_partition:
+print_active_partition:
     push ebp
     mov ebp, esp
-    push esi
 
-    mov edi, dword [ebp + 8]
-    mov esi, dword [ebp + 12]
-    cmp esi, 0
+    test byte [boot_partition + _boot_partition.attrs], 0x80
     jnz .valid_part
 
+.invalid_part:
     push color_err
     push .active_partition_error
     call print_str
     add esp, 8
     call reset
 .valid_part:
-    mov eax, dword [esi]
-    mov dword [edi], eax
-    mov eax, dword [esi + 4]
-    mov dword [edi + 4], eax
-    mov eax, dword [esi + 8]
-    mov dword [edi + 8], eax
-    mov eax, dword [esi + 12]
-    mov dword [edi + 12], eax
-
-    mov eax, dword [edi + 8]
-    push eax
+    push dword [boot_partition + _boot_partition.lba_start]
     push number_string
     call itoa
     add esp, 8
@@ -126,41 +90,12 @@ copy_active_partition:
     add esp, 8
     call print_newline
 
-    pop esi
     pop ebp
     ret
 .active_partition: db `Active partition start sector: `, 0
 .active_partition_error: db `No active partition found\n`, 0
 
-copy_memory_map: ; void copy_memory_map(struct _memory_map *dst, struct _memory_map *src)
-    push ebp
-    mov ebp, esp
-    push edi
-    push esi
-
-    mov edi, dword [ebp + 8]
-    mov esi, dword [ebp + 12]
-    xor ecx, ecx
-.copy:
-    cmp ecx, _memory_map_size
-    jg .done
-    mov eax, dword [esi + ecx]
-    mov dword [edi + ecx], eax
-    add ecx, 4
-    jmp .copy
-.done:
-    mov eax, dword [edi + _memory_map.length]
-    cmp eax, 20
-    jl .exit
-    mov eax, 20
-    mov dword [edi + _memory_map.length], eax
-.exit:
-    pop esi
-    pop edi
-    pop ebp
-    ret
-
-print_memory_map: ; void copy_memory_map(struct _memory_map *map)
+print_memory_map: ; void print_memory_map(struct _memory_map *map)
     push ebp
     mov ebp, esp
     push esi
@@ -241,6 +176,11 @@ print_memory_map: ; void copy_memory_map(struct _memory_map *map)
     pop ebp
     ret
 .header: db `Memory map:\n`, 0
+
+section .stage1_copy nobits
+
+global memory_map
+memory_map: resb _memory_map_size
 
 section .bios_data nobits
 

@@ -1,10 +1,8 @@
 MEMORY {
     BIOS_DATA (r): ORIGIN = 0x00000400, LENGTH = 0x00000100
-    STACK (rw): ORIGIN = 0x00000500, LENGTH = 0x00007700
-    STAGE1 (rwx): ORIGIN = 0x00007C00, LENGTH = 0x00000200
-    STAGE1_DATA (rw): ORIGIN = 0x00007E00, LENGTH = 0x00008200
-    STAGE2 (rx): ORIGIN = 0x00010000, LENGTH = 0x00010000
-    STAGE2_DATA (rw): ORIGIN = 0x00020000, LENGTH = 0x00060000
+    STAGE2 (rx): ORIGIN = 0x00000500, LENGTH = 0x00010000
+    STAGE2_DATA (rw): ORIGIN = 0x00010500, LENGTH = 0x0006F700
+    STAGE1_COPY (rw): ORIGIN = 0x0007FC00, LENGTH = 0x00000400
     KERNEL (rwx): ORIGIN = 0x00100000, LENGTH = 0x00E00000
 }
 
@@ -13,20 +11,28 @@ ENTRY(_start)
 SECTIONS {
     .text :
     {
+        _text_start = .;
         *(.entry*)
         *(.text*)
+        _text_end = .;
     } > STAGE2
+    _text_length = _text_end - _text_start;
 
     .data :
     {
+        _data_start = .;
         *(.data*)
         . = ALIGN(512);
+        _data_end = .;
     } > STAGE2
+    _data_length = _data_end - _data_start;
+    _reloc_length = _data_end - _text_start;
 
-    .stage_one (NOLOAD) :
+    .stage1_copy (NOLOAD):
     {
-        *(.stage_one*)
-    } > STAGE1
+        _stage1_copy_start = .;
+        *(.stage1_copy*)
+    } > STAGE1_COPY
 
     .bss :
     {
@@ -36,11 +42,11 @@ SECTIONS {
         . = ALIGN(4);
         _bss_end = .;
     } > STAGE2_DATA
+    _bss_length = _bss_end - _bss_start;
+    _stack_top = ORIGIN(STAGE2_DATA) + LENGTH(STAGE2_DATA);
 
     .bios_data (NOLOAD) :
     {
         *(.bios_data*)
     } > BIOS_DATA
-
-    _stack_top = ORIGIN(STACK) + LENGTH(STACK);
 }
