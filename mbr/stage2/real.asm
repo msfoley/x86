@@ -27,6 +27,12 @@ _start:
     mov di, ax
     mov cx, _memory_map_size / 2
     repe movsw
+.copy_mbr:
+    mov si, 0x7C00
+    mov eax, mbr_backup
+    mov di, ax
+    mov cx, 512 / 2
+    repe movsw
 .relocate:
     mov ax, 0x1000
     mov ds, ax
@@ -44,8 +50,7 @@ _start:
     mov ds, ax
     mov es, ax
     jmp 0:.reloc_jump
-.reloc_jump
-
+.reloc_jump:
     mov di, gdtr
     lgdt [ds:di]
 

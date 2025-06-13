@@ -46,6 +46,7 @@ endstruc
 extern start32
 extern memory_map
 extern bios_data
+extern mbr_backup
 %endif
 
 %endif

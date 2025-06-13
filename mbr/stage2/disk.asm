@@ -6,13 +6,29 @@ bits 32
 %include "stage2/pci.asm.inc"
 %include "stage2/print.asm.inc"
 
-%define AHCI_CLASS 0x01
-%define AHCI_SUBCLASS 0x06
-%define AHCI_PROG_IF 0x01
+AHCI_CLASS equ 0x01
+AHCI_SUBCLASS equ 0x06
+AHCI_PROG_IF equ 0x01
+
+AHCI_CLASS_ATAPI equ 0xEB140101
+AHCI_CLASS_SEMB equ 0xC33C0101
+AHCI_CLASS_PM equ 0x96690101
+AHCI_CLASS_SATA equ 0x00000101
+
+AHCI_PORT_IPM_ACTIVE equ 1
+AHCI_PORT_DET_PRESENT equ 3
+
+struc _ahci_port_local
+    .port: resb 4
+    .port_type: resb 4
+endstruc
 
 section .bss
 
 ahci_base: resb 4
+ahci_port_local: resb 32 * _ahci_port_local_size
+ahci_port_boot_index: resb 1
+disk_read_sector: resb 512
 
 section .text
 
@@ -58,8 +74,17 @@ ahci_init: ; int ahci_init()
     call pci_read_dword
     add esp, 16
     mov dword [ahci_base], eax
+
+    call ahci_port_detect
+    call ahci_port_find_boot_device
+    cmp eax, 0
+    je .success
+    mov eax, 1
     jmp .exit
+
+.success:
     mov eax, 0
+    jmp .exit
 .fail:
     push color_norm
     push .no_ahci
@@ -73,23 +98,23 @@ ahci_init: ; int ahci_init()
 .no_ahci: db `No AHCI devices found.\n`, 0
 .found_ahci: db `Found AHCI device.\n`, 0
 
-ahci_port_detect: ; int ahci_port_detect(struct ahci_mem *ptr)
+ahci_port_detect: ; int ahci_port_detect()
     push ebp
     mov ebp, esp
     push esi
     push edi
     push ebx
 
-    mov esi, dword [ebp + 8]
+    mov esi, dword [ahci_base]
     ; Get bit field of implemented ports
-    mov ebx, [esi + ahci_mem.pi]
+    mov ebx, dword [esi + _ahci_mem.pi]
     xor ecx, ecx
 .loop_ports:
     ; Get address of port from memory base
     mov eax, ecx
-    mov edx, ahci_port_size
+    mov edx, _ahci_port_size
     mul edx
-    lea edi, [eax + esi + ahci_mem.ports]
+    lea edi, dword [eax + esi + _ahci_mem.ports]
     
     mov eax, 1
     shl eax, cl
@@ -98,17 +123,13 @@ ahci_port_detect: ; int ahci_port_detect(struct ahci_mem *ptr)
     jz .port_not_present
 
     push edi
+    push ecx
     call ahci_detect_port
-    add esp, 4
-    cmp eax, 0
-    jnz .device_found
+    add esp, 8
 .port_not_present:
     add ecx, 1
-    cmp ecx, 32
+    cmp ecx, 31
     jl .loop_ports
-.device_not_found:
-    mov eax, 1
-    jmp .exit
 .device_found:
     xor eax, eax
 .exit:
@@ -118,13 +139,61 @@ ahci_port_detect: ; int ahci_port_detect(struct ahci_mem *ptr)
     pop ebp
     ret
 
-ahci_detect_port: ; int ahci_detect_port(struct ahci_port *ptr)
+ahci_detect_port: ; int ahci_detect_port(int index, struct ahci_port *ptr)
     push ebp
     mov ebp, esp
-    ; Do something
+    push edi
+    push esi
 
+    mov edi, dword [ebp + 8]
+    lea edi, dword [edi * _ahci_port_local_size + ahci_port_local]
+
+    mov esi, dword [ebp + 12] ; port PTR
+    mov eax, dword [esi + _ahci_port.ssts]
+
+    mov ecx, eax
+    and ecx, 0x0F
+    cmp ecx, AHCI_PORT_DET_PRESENT
+    jne .not_present
+
+    mov ecx, eax
+    shr ecx, 8
+    and ecx, 0x0F
+    cmp ecx, AHCI_PORT_IPM_ACTIVE
+    jne .not_present
+
+    mov eax, dword [esi + _ahci_port.sig]
+    cmp eax, AHCI_CLASS_SATA
+    je .supported
+    cmp eax, AHCI_CLASS_ATAPI
+    je .supported
+    cmp eax, AHCI_CLASS_SEMB
+    je .supported
+    cmp eax, AHCI_CLASS_PM
+    je .supported
+    jmp .not_present
+.supported:
+    mov dword [edi + _ahci_port_local.port_type], eax
+    mov dword [edi + _ahci_port_local.port], esi
+    mov eax, 1
+    jmp .exit
+.not_present:
+    xor eax, eax
+.exit:
+    pop esi
+    pop edi
     pop ebp
     ret  
+
+ahci_port_find_boot_device:
+    push ebp
+    mov ebp, esp
+    push edi
+    push esi
+
+    pop esi
+    pop edi
+    ret
 
 section .stage1_copy nobits
 global boot_partition

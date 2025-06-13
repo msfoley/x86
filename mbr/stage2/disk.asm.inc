@@ -10,7 +10,7 @@ struc mbr_part
     .sector_count: resb 4
 endstruc
 
-struc ahci_mem
+struc _ahci_mem
     .cap: resb 4
     .ghc: resb 4
     .is: resb 4
@@ -27,7 +27,7 @@ struc ahci_mem
     .ports: resb 0x100
 endstruc
 
-struc ahci_port
+struc _ahci_port
     .clb: resb 4
     .clbu: resb 4
     .fb: resb 4
@@ -49,7 +49,7 @@ struc ahci_port
     .vendor: resb 16
 endstruc
 
-struc ahci_fis
+struc _ahci_fis
     .dma_setup: resb 28
     .pad0: resb 4
     .pio_setup: resb 20
@@ -61,7 +61,7 @@ struc ahci_fis
     .reserved: resb 0x100 - 0xA0
 endstruc
 
-struc ahci_fis_reg_h2d
+struc _ahci_fis_reg_h2d
     ; DWORD 0
     .fis_type: resb 1
     .pmport_c: resb 1
@@ -80,7 +80,7 @@ struc ahci_fis_reg_h2d
     ; DWORD 4
     .reserved: resb 4
 endstruc
-struc ahci_fis_reg_d2h
+struc _ahci_fis_reg_d2h
     ; DWORD 0
     .fis_type: resb 1
     .pmport_i: resb 1
@@ -98,14 +98,14 @@ struc ahci_fis_reg_d2h
     ; DWORD 4
     .reserved3: resb 4
 endstruc
-struc ahci_fis_data
+struc _ahci_fis_data
     ; DWORD 0
     .fis_type: resb 1
     .pmport: resb 1
     .reserved1: resb 2
     ; 1 - N DWORDs of data
 endstruc
-struc ahci_fis_pio_setup
+struc _ahci_fis_pio_setup
     ; DWORD 0
     .fis_type: resb 1
     .pmport_d_i: resb 1
@@ -130,7 +130,7 @@ ahci_fis_c equ 0x10
 ahci_fis_i equ 0x20
 ahci_fis_d equ 0x40
 
-struc ahci_command_header
+struc _ahci_command_header
     .flags: resb 2
     .prdtl: resb 2
     .prdbc: resb 4
@@ -148,14 +148,14 @@ ahci_command_header_flag_c equ 0x0400
 ahci_command_header_flag_res equ 0x0800
 ahci_command_header_flag_pmp equ 0xF000
 
-struc ahci_command_table
+struc _ahci_command_table
     .cfis: resb 64
     .acmd: resb 16
     .reserved: resb 48
     ; prdt entries after
 endstruc
 
-struc ahci_prdt_entry
+struc _ahci_prdt_entry
     .dba: resb 4
     .dbau: resb 4
     .reserved1: resb 4

@@ -53,6 +53,8 @@ stage2:
 
     call ahci_init
     cmp eax, 0
+    jne reset
+
     call reset
 .ident: db `Stage2 Bootloader\n`, 0
 
@@ -176,6 +178,11 @@ print_memory_map: ; void print_memory_map(struct _memory_map *map)
     pop ebp
     ret
 .header: db `Memory map:\n`, 0
+
+section .mbr nobits
+
+global mbr_backup
+mbr_backup: resb 512
 
 section .stage1_copy nobits
 
