@@ -1,4 +1,5 @@
 %include "stage2/bootloader.asm.inc"
+%include "stage2/interrupt.asm.inc"
 %include "stage2/disk.asm.inc"
 
 extern start_32
@@ -57,28 +58,27 @@ _start:
     mov eax, cr0
     or al, 0x01
     mov cr0, eax
-    jmp 0x08:.32
+    jmp _gdt.code:.32
 bits 32
 .32:
-    ;jmp 0x08:$ + 0x10000 - 0x500
-    mov eax, 0x10
+    mov ax, _gdt.data
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax
 
-    jmp 0x08:start_32
+    jmp _gdt.code:start_32
 
 section .data
 
 initial_gdtr:
-    dw (8 * 3)
+    dw _gdt_size
     dd 0x10000 + gdt - 0x500
 
 global gdtr
 gdtr:
-    dw (8 * 3)
+    dw _gdt_size
     dd gdt
 
 global gdt
@@ -104,3 +104,10 @@ gdt:
     db 0x93 ; Access Byte
     db 0xCF ; 3:0 Flags ; 19:16 Limit
     db 0x00 ; 31:24 Base
+    ; TSS descriptor
+    dw _tss_size - 1
+    dw tss
+    db 0x00
+    db 0x89
+    db 0x40
+    db 0x00

@@ -1,6 +1,44 @@
 %ifndef BOOTLOADER_ASM_INC
 %define BOOTLOADER_ASM_INC
 
+struc _tss
+    .link: resb 4
+    .esp0: resb 4
+    .ss0: resb 4
+    .esp1: resb 4
+    .ss1: resb 4
+    .esp2: resb 4
+    .ss2: resb 4
+    .cr3: resb 4
+    .eip: resb 4
+    .eflags: resb 4
+    .eax: resb 4
+    .ecx: resb 4
+    .edx: resb 4
+    .ebx: resb 4
+    .esp: resb 4
+    .ebp: resb 4
+    .esi: resb 4
+    .edi: resb 4
+    .es: resb 4
+    .cs: resb 4
+    .ss: resb 4
+    .ds: resb 4
+    .fs: resb 4
+    .gs: resb 4
+    .ldtr: resb 4
+    .res: resb 2
+    .iopb: resb 2
+    .ssp: resb 4
+endstruc
+
+struc _gdt
+    .null: resb 8
+    .code: resb 8
+    .data: resb 8
+    .tss: resb 8
+endstruc
+
 struc _bios_data
     .com1: resb 1
     .com2: resb 1

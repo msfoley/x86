@@ -69,6 +69,7 @@ extern pci_init ; void pci_init()
 extern pci_read_dword ; uint32_t pci_read_dword(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 extern pci_read_word ; uint16_t pci_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 extern pci_read_byte ; uint8_t pci_read_byte(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
+extern pci_write_dword ; uint32_t pci_read_dword(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset, uint32_t data)
 extern pci_print_device_list ; void pci_print_device_list()
 %endif
 

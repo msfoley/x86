@@ -5,6 +5,8 @@ bits 32
 %include "stage2/print.asm.inc"
 %include "stage2/disk.asm.inc"
 %include "stage2/pci.asm.inc"
+%include "stage2/interrupt.asm.inc"
+%include "stage2/timer.asm.inc"
 
 extern _bss_start
 extern _bss_length
@@ -21,7 +23,7 @@ start_32:
     repe stosd
 
 .far_jump:
-    jmp 0x08:stage2
+    jmp _gdt.code:stage2
 
 section .text
 
@@ -29,11 +31,17 @@ stage2:
     cli
 
     mov esp, _stack_top
-    mov ebp, esp    
+    xor ebp, ebp
+    push ebp
+    mov ebp, esp
 
     ; Setup video vars
     mov byte [print_col], 0
     mov byte [print_line], 0
+
+    call interrupt_init
+    call timer_init
+    sti
 
     call clear_screen
     ; print message saying we're in stage 2

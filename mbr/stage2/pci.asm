@@ -389,5 +389,41 @@ pci_print_device: ; void pci_print_device(struct _pci_device *device)
     pop ebp
     ret
 
+global pci_write_dword
+pci_write_dword: ; uint32_t pci_write_dword(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset, uint32_t data)
+    push ebp
+    mov ebp, esp
+
+    ; Construct address
+    mov eax, ENABLE_BIT
+    ; Bus number
+    mov ecx, [ebp + 8]
+    and ecx, PCI_MAX_BUS
+    shl ecx, 16
+    or eax, ecx
+    ; Slot number
+    mov ecx, [ebp + 12]
+    and ecx, PCI_MAX_SLOT
+    shl ecx, 11
+    or eax, ecx
+    ; Function number
+    mov ecx, [ebp + 16]
+    and ecx, PCI_MAX_FUNC
+    shl ecx, 8
+    or eax, ecx
+    ; Offset
+    mov ecx, [ebp + 20]
+    and ecx, 0xFC
+    or eax, ecx
+
+    mov edx, CONFIG_ADDRESS
+    out dx, eax
+    mov edx, CONFIG_DATA
+    mov eax, [ebp + 24]
+    out dx, eax
+
+    pop ebp
+    ret
+
 section .bss
 temp_storage: resb 7

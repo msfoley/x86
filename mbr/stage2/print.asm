@@ -141,6 +141,7 @@ itoa:
 
 global clear_screen
 clear_screen:
+    push ebp
     mov eax, video_mem
     mov ecx, eax
     add ecx, 2 * columns * lines
@@ -149,6 +150,7 @@ clear_screen:
     add eax, 4
     cmp eax, ecx
     jne .loop
+    pop ebp
     ret
 
 global itoa64
@@ -196,14 +198,18 @@ itoa8: ; uint32_t itoa8(char *str, uint8_t x)
     push edi
     push esi
 
+    mov eax, dword [ebp + 12]
+    and eax, 0xFF
     mov edi, dword [ebp + 8]
     mov esi, itoa8_16_buf
 
-    push dword [ebp + 12]
+    push eax
     push esi
     call itoa
     add esp, 8
 
+    mov ax, word [esi]
+    mov word [edi], ax
     mov ax, word [esi + 8]
     mov word [edi + 2], ax
     mov byte [edi + 4], 0
@@ -221,14 +227,18 @@ itoa16: ; uint32_t itoa16(char *str, uint16_t x)
     push edi
     push esi
 
+    mov eax, dword [ebp + 12]
+    and eax, 0xFFFF
     mov edi, dword [ebp + 8]
     mov esi, dword itoa8_16_buf
 
-    push dword [ebp + 12]
+    push eax
     push esi
     call itoa
     add esp, 8
 
+    mov ax, word [esi]
+    mov word [edi], ax
     mov eax, dword [esi + 6]
     mov dword [edi + 2], eax
     mov byte [edi + 6], 0

@@ -39,6 +39,9 @@ $(DISK_IMAGE): $(MBR_IMAGE)
 run: $(DISK_IMAGE)
 	qemu-system-x86_64 $(QEMU_ARGS)
 
+run-32: $(DISK_IMAGE)
+	qemu-system-i386 $(QEMU_ARGS)
+
 print-%:
 	@echo "$* = $($*)"
 
