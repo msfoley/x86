@@ -2,6 +2,7 @@ MBR_IMAGE := mbr.bin
 
 AFLAGS += -g -felf -F dwarf
 LDFLAGS += --print-memory-usage -m elf_i386
+LDFLAGS += -L/usr/lib/gcc/x86_64-pc-linux-gnu/15.1.1/32
 
 STAGE1_NAME := stage1
 STAGE1_DIR := $(STAGE1_NAME)
@@ -50,7 +51,7 @@ $(STAGE2_BIN): $(STAGE2_ELF)
 	nasm $(AFLAGS) -MD $*.d $< -l $*.lst -o $@
 
 %.elf:
-	$(LD) -T $(filter %.ld,$^) $(LDFLAGS) $(filter %.o,$^) -o $@ -Map=$*.map
+	$(LD) -T $(filter %.ld,$^) $(LDFLAGS) $(filter %.o,$^) -o $@ -Map=$*.map -static -lgcc
 
 %.bin: %.elf
 	objcopy -O binary $< $@

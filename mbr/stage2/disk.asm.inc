@@ -220,9 +220,15 @@ struc _boot_partition
     .sector_count: resb 4
 endstruc
 
+DISK_SECTOR_SIZE equ 512
+DISK_SECTOR_SIZE_LOG equ 9
+
 %ifndef DISK_ASM_INC_NO_EXTERN
 extern boot_partition
-extern ahci_init
+extern ahci_boot_device_port
+
+extern ahci_init ; void ahci_init()
+extern ahci_port_read_sector ; int ahci_port_init(uint32_t port_num, uint8_t *buf, uint32_t lba_low, uint32_t lba_high)
 %endif
 
 %endif

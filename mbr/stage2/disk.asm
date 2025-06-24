@@ -53,7 +53,8 @@ section .bss
 
 ahci_pci_device: resb 4
 ahci_base: resb 4
-ahci_port_boot_index: resb 1
+
+global ahci_boot_device_port
 ahci_boot_device_port: resb 4
 
 alignb 4
@@ -182,10 +183,11 @@ ahci_port_find_boot_device:
     mov ecx, dword [esp]
     ; Get the device's boot sector
     push 0
+    push 0
     push disk_read_sector
     push ecx
     call ahci_port_read_sector
-    add esp, 12
+    add esp, 16
     cmp eax, 0
     jnz .port_not_present
 
@@ -270,8 +272,7 @@ ahci_port_init: ; int ahci_port_init(uint32_t port_num)
     mov edi, dword [esi + _ahci_state.port]
     and dword [edi + _ahci_port.serr], 0xFFFFFFFF
     and dword [edi + _ahci_port.is], 0xFFFFFFFF
-    ;mov dword [edi + _ahci_port.ie], AHCI_PxIE_DEFAULTS
-    mov dword [edi + _ahci_port.ie], 0xFFFFFFFF
+    mov dword [edi + _ahci_port.ie], AHCI_PxIE_DEFAULTS
 
     mov eax, dword [edi + _ahci_port.cmd]
     and eax, ~AHCI_PxCMD_ICC
@@ -352,7 +353,8 @@ ahci_command_stop: ; void ahci_command_stop(struct _ahci_port *port)
     pop ebp
     ret
 
-ahci_port_read_sector: ; int ahci_port_init(uint32_t port_num, uint8_t *buf, uint32_t lba)
+global ahci_port_read_sector
+ahci_port_read_sector: ; int ahci_port_init(uint32_t port_num, uint8_t *buf, uint32_t lba_low, uint32_t lba_high)
     push ebp
     mov ebp, esp
     push edi
@@ -410,7 +412,8 @@ ahci_port_read_sector: ; int ahci_port_init(uint32_t port_num, uint8_t *buf, uin
     mov eax, dword [ebp + 16]
     shr eax, 24
     mov byte [edi + _ahci_fis_reg_h2d.lba_high], al
-    mov word [edi + _ahci_fis_reg_h2d.lba_high + 1], 0
+    mov eax, dword [ebp + 20]
+    mov word [edi + _ahci_fis_reg_h2d.lba_high + 1], ax
     ; fs->count = 1
     mov word [edi + _ahci_fis_reg_h2d.count], 1
 

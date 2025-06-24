@@ -4,6 +4,7 @@ bits 32
 %include "stage2/bootloader.asm.inc"
 %include "stage2/print.asm.inc"
 %include "stage2/disk.asm.inc"
+%include "stage2/ext4.asm.inc"
 %include "stage2/pci.asm.inc"
 %include "stage2/interrupt.asm.inc"
 %include "stage2/timer.asm.inc"
@@ -63,12 +64,14 @@ stage2:
     cmp eax, 0
     jne reset
 
+    call ext4_init
+
     call reset
 .ident: db `Stage2 Bootloader\n`, 0
 
 reset:
     hlt
-    jmp $
+    jmp reset
     ; Do a reset if we ever get here
     jmp 0xFFFF:0x0000
 
