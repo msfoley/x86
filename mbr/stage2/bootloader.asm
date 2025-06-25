@@ -5,6 +5,7 @@ bits 32
 %include "stage2/print.asm.inc"
 %include "stage2/disk.asm.inc"
 %include "stage2/ext4.asm.inc"
+%include "stage2/elf.asm.inc"
 %include "stage2/pci.asm.inc"
 %include "stage2/interrupt.asm.inc"
 %include "stage2/timer.asm.inc"
@@ -65,6 +66,12 @@ stage2:
     jne reset
 
     call ext4_init
+    cmp eax, 0
+    jne reset
+
+    call elf_init
+    cmp eax, 0
+    jne reset
 
     call reset
 .ident: db `Stage2 Bootloader\n`, 0

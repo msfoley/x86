@@ -316,6 +316,14 @@ EXT4_NAME_LEN equ 255
 EXT4_MAX_BLOCK_SIZE equ 4096
 
 %ifndef EXT4_ASM_INC_NO_EXTERN
+extern ext4_kernel_inode
+extern ext4_block_size
+
 extern ext4_init ; void ext4_init()
+
+extern ext4_get_inode_block ; int ext4_get_inode_block(struct ext4_inode *inode, uint32_t block, uint8_t *buf)
+extern ext4_get_file_size ; uint64_t ext4_get_file_size(struct ext4_inode *inode)
+extern ext4_byte_to_block ; uint64_t ext4_byte_to_block(uint64_t byte_offset)
+extern ext4_byte_to_block_offset ; uint32_t ext4_byte_to_block_offset(uint64_t byte_offset)
 %endif
 %endif

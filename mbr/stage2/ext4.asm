@@ -26,7 +26,8 @@ fname_buf: resb EXT4_NAME_LEN + 1
 sector_block_conv: resb 1
 
 alignb 4
-block_size: resb 4
+global ext4_block_size
+ext4_block_size: resb 4
 
 alignb 4
 sector_buffer: resb DISK_SECTOR_SIZE
@@ -36,6 +37,10 @@ superblock: resb _ext4_superblock_size
 
 alignb 4
 inode_buffer: resb _ext4_inode_size
+
+alignb 4
+global ext4_kernel_inode
+ext4_kernel_inode: resb _ext4_inode_size
 
 alignb 4
 block_group_buffer: resb _ext4_group_desc_size
@@ -76,7 +81,7 @@ ext4_init: ; void ext4_init()
     mov ecx, dword [superblock + _ext4_superblock.log_block_size]
     add ecx, 10
     shl eax, cl
-    mov dword [block_size], eax
+    mov dword [ext4_block_size], eax
 
     call ext4_is_compat
     cmp eax, 0
@@ -86,16 +91,25 @@ ext4_init: ; void ext4_init()
     call ext4_find_kernel
     cmp eax, 0
     jmp .file_found
+    push color_err
+    push .kernel_not_found
+    call print_str
+    add esp, 8
     mov eax, 1
     jmp .exit
 .file_found:
-    mov esi, inode_buffer
+    push _ext4_inode_size
+    push inode_buffer
+    push ext4_kernel_inode
+    call memcpy
+    add esp, 12
 
     xor eax, eax
 .exit:
     pop esi
     pop ebp
     ret
+.kernel_not_found: db `Kernel \"kernel.elf\" not found on root partition\n`, 0
 
 ext4_find_kernel: ; int ext4_find_kernel()
     push ebp
@@ -213,7 +227,7 @@ ext4_get_inode_block_extents: ; int ext4_get_inode_block_extends(struct ext4_ino
     sub esp, _ext4_get_inode_block_extents_local_size
     mov word [esp + _ext4_get_inode_block_extents_local.index], 0
     mov eax, dword [esi + _ext4_get_inode_block_extents_local.header]
-    add eax, dword [block_size]
+    add eax, dword [ext4_block_size]
     mov dword [esp + _ext4_get_inode_block_extents_local.header], eax
     add eax, _ext4_extent_header_size
     mov dword [esp + _ext4_get_inode_block_extents_local.node], eax
@@ -307,6 +321,7 @@ ext4_get_inode_block_pointer: ; int ext4_get_inode_block_pointer(struct ext4_ino
     pop ebp
     ret
 
+global ext4_get_inode_block
 ext4_get_inode_block: ; int ext4_get_inode_block(struct ext4_inode *inode, uint32_t block, uint8_t *buf)
     push ebp
     mov ebp, esp
@@ -390,7 +405,7 @@ ext4_find_file_flat: ; uint64_t ext4_find_file_flat(struct ext4_inode *dir, uint
     mov ax, word [edi + _ext4_dir_entry.rec_len]
     add edi, eax
     add dword [esp + _ext4_find_file_flat_local.block_offset], eax
-    mov eax, dword [block_size]
+    mov eax, dword [ext4_block_size]
     cmp dword [esp + _ext4_find_file_flat_local.block_offset], eax ; See if we've hit the end of the block
     jl .search_outer.inner
 .search_outer.inc:
@@ -625,16 +640,16 @@ ext4_is_compat: ; int ext4_is_compat()
     mov eax, 1 << 10
     shl eax, cl
     cmp eax, EXT4_MAX_BLOCK_SIZE
-    jle .block_size_ok
+    jle .ext4_block_size_ok
 
     push color_err
-    push .block_size_str
+    push .ext4_block_size_str
     call print_str
     add esp, 8
     mov eax, 1
     jmp .exit    
 
-.block_size_ok:
+.ext4_block_size_ok:
     ; Check incompatible flags
     mov eax, dword [superblock + _ext4_superblock.feature_incompat]
     and eax, ~EXT4_SUPERBLOCK_FEATURE_INCOMPAT_SUPPORTED
@@ -667,7 +682,7 @@ ext4_is_compat: ; int ext4_is_compat()
 .exit:
     pop ebp
     ret
-.block_size_str: db `Block size too large.\n`, 0
+.ext4_block_size_str: db `Block size too large.\n`, 0
 .incompat_str: db `Incompatible feature flags set: `, 0
 
 ext4_block_to_lba: ; uint64_t ext4_block_to_lba(uint32_t block_low, uint32_t block_high)
@@ -821,3 +836,48 @@ ext4_print_dir_entry: ; void ext4_print_dir_entry(struct ext4_dir_entry *dirent)
     ret
 .str1: db "inode: ", 0
 .str2: db " name: ", 0
+
+global ext4_get_file_size ; uint64_t ext4_get_file_size(struct ext4_inode *inode)
+ext4_get_file_size:
+    push ebp
+    mov ebp, esp
+
+    mov edx, dword [esi + _ext4_inode.size_hi]
+    mov eax, dword [esi + _ext4_inode.size_lo]
+
+    pop ebp
+    ret
+
+global ext4_byte_to_block ; uint64_t ext4_byte_to_block(uint64_t byte_offset)
+ext4_byte_to_block:
+    push ebp
+    mov ebp, esp
+
+    mov ecx, dword [superblock + _ext4_superblock.log_block_size]
+    add ecx, 10
+    push ecx
+    push dword [ebp + 12]
+    push dword [ebp + 8]
+    call __ashrdi3
+    add esp, 12
+
+    pop ebp
+    ret
+
+global ext4_byte_to_block_offset ; uint32_t ext4_byte_to_block_offset(uint64_t byte_offset)
+ext4_byte_to_block_offset:
+    push ebp
+    mov ebp, esp
+
+    mov edx, 1
+    mov ecx, dword [superblock + _ext4_superblock.log_block_size]
+    add ecx, 10
+    shl edx, cl
+    sub edx, 1
+
+    mov eax, dword [ebp + 8]
+    and eax, edx
+    xor edx, edx
+
+    pop ebp
+    ret
