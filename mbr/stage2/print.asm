@@ -1,7 +1,7 @@
 bits 32
 
 %define STRING_ASM_INC_NO_EXTERN
-%include "stage2/print.asm.inc"
+%include "stage2/print.inc.asm"
 
 video_mem equ 0x000B8000
 columns equ 80

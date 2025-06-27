@@ -1,8 +1,8 @@
 %define INTERRUPT_ASM_INC_NO_EXTERN
-%include "stage2/interrupt.asm.inc"
-%include "stage2/util.asm.inc"
-%include "stage2/print.asm.inc"
-%include "stage2/bootloader.asm.inc"
+%include "stage2/interrupt.inc.asm"
+%include "stage2/util.inc.asm"
+%include "stage2/print.inc.asm"
+%include "stage2/bootloader.inc.asm"
 
 bits 32
 

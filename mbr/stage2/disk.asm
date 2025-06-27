@@ -1,13 +1,13 @@
 bits 32
 
 %define DISK_ASM_INC_NO_EXTERN
-%include "stage2/disk.asm.inc"
-%include "stage2/bootloader.asm.inc"
-%include "stage2/pci.asm.inc"
-%include "stage2/print.asm.inc"
-%include "stage2/util.asm.inc"
-%include "stage2/interrupt.asm.inc"
-%include "stage2/timer.asm.inc"
+%include "stage2/disk.inc.asm"
+%include "stage2/bootloader.inc.asm"
+%include "stage2/pci.inc.asm"
+%include "stage2/print.inc.asm"
+%include "stage2/util.inc.asm"
+%include "stage2/interrupt.inc.asm"
+%include "stage2/timer.inc.asm"
 
 AHCI_CLASS equ 0x01
 AHCI_SUBCLASS equ 0x06

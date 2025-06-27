@@ -1,5 +1,5 @@
 %define UTIL_ASM_INC_NO_EXTERN
-%include "stage2/util.asm.inc"
+%include "stage2/util.inc.asm"
 
 bits 32
 

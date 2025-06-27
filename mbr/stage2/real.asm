@@ -1,6 +1,6 @@
-%include "stage2/bootloader.asm.inc"
-%include "stage2/interrupt.asm.inc"
-%include "stage2/disk.asm.inc"
+%include "stage2/bootloader.inc.asm"
+%include "stage2/interrupt.inc.asm"
+%include "stage2/disk.inc.asm"
 
 extern start_32
 extern _text_start

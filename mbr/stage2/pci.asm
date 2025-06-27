@@ -1,8 +1,8 @@
 bits 32
 
 %define PCI_ASM_INC_NO_EXTERN
-%include "stage2/pci.asm.inc"
-%include "stage2/print.asm.inc"
+%include "stage2/pci.inc.asm"
+%include "stage2/print.inc.asm"
 
 ENABLE_BIT equ 0x80000000
 

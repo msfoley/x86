@@ -1,6 +1,6 @@
 %define TIMER_ASM_INC_NO_EXTERN
-%include "stage2/timer.asm.inc"
-%include "stage2/interrupt.asm.inc"
+%include "stage2/timer.inc.asm"
+%include "stage2/interrupt.inc.asm"
 
 bits 32
 
